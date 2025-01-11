@@ -12,11 +12,10 @@ public class PlayerManager : MonoBehaviour
     public float jumpForce = 5.5f;
     public int numberJump =0;
     public int maxNumberJump = 1;
-    public bool canJump = false;
-    //public float maxTimeJump = 0.5f;
-    //private float timeActualJump = 0f;
+    private bool isFacingRight = true;
 
     public LayerMask groundLayer;
+    public LayerMask wallLayer;
 
     //public TextMeshProUGUI livesNumber;
     public float radio = 0.4f;
@@ -26,8 +25,6 @@ public class PlayerManager : MonoBehaviour
     private Rigidbody2D rb;
 
     private bool isJumpingButtonPressed = false;
-    private int direction = 1;
-    private float originalXScale;
     //private float xVelocity;
     //public int lives = 3;
     private bool isVulnerable = true;
@@ -35,13 +32,23 @@ public class PlayerManager : MonoBehaviour
 
     private Transform actualPlatform = null;
 
+    private bool isWallSliding;
+    private float wallSlidingSpeed = 0.5f;
+
+    private bool isWallJumping;
+    private float wallJumpingDirection;
+    private float wallJumpingTime = 0.2f;
+    private float wallJumpingCounter;
+    private float wallJumpingDuration = 0.4f;
+    private Vector2 wallJumpingPower = new Vector2(3f, 6f);
+
+    [SerializeField] private Transform wallCheck;
 
     private void Start()
     {
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-        originalXScale = transform.localScale.x;
         //livesNumber.text = lives.ToString();
     }
 
@@ -50,7 +57,14 @@ public class PlayerManager : MonoBehaviour
     {
         PlayerMovement();
         PlayerJump();
-        //CheckVulnerability();
+        CheckVulnerability();
+        WallSlide();
+        WallJump();
+
+        if (!isWallJumping)
+        {
+            Flip();
+        }
     }
 
     private void PlayerMovement()
@@ -61,27 +75,7 @@ public class PlayerManager : MonoBehaviour
         Vector2 movement = new Vector2(horizontal, 0) * moveSpeed * Time.deltaTime;
         transform.Translate(movement);
 
-       
-        if (horizontal != 0)
-        {
-            animator.SetBool("isMoving", true);
-        }
-
-        else
-        {
-            animator.SetBool("isMoving", false);
-        }
-
-        if (horizontal < 0)
-        {
-            spriteRenderer.flipX = true;
-        }
-
-        else
-        {
-            spriteRenderer.flipX = false;
-        }
-       
+        animator.SetBool("isMoving", horizontal != 0);
     }
 
     private void Jump()
@@ -114,6 +108,74 @@ public class PlayerManager : MonoBehaviour
         if (!isJumpingButtonPressed && IsInFloor())
         {
             numberJump = 0;
+        }
+    }
+
+    private bool IsWalled()
+    {
+        Debug.Log("walled");
+        return Physics2D.OverlapCircle(wallCheck.position, 0.2f, wallLayer);
+    }
+
+    private void WallSlide()
+    {
+        if (IsWalled() && !IsInFloor() && horizontal != 0f)
+        {
+            isWallSliding = true;
+            rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue));
+        }
+        else
+        {
+            isWallSliding = false;
+        }
+    }
+
+    private void WallJump()
+    {
+        if (isWallSliding)
+        {
+            isWallJumping = false;
+            wallJumpingDirection = -transform.localScale.x;
+            wallJumpingCounter = wallJumpingTime;
+
+            CancelInvoke(nameof(StopWallJumping));
+        }
+        else
+        {
+            wallJumpingCounter -= Time.deltaTime;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Space) && wallJumpingCounter > 0f)
+        {
+            isWallJumping = true;
+            rb.velocity = new Vector2(wallJumpingDirection * wallJumpingPower.x, wallJumpingPower.y);
+            wallJumpingCounter = 0f;
+
+            if (transform.localScale.x != wallJumpingDirection)
+            {
+                isFacingRight = !isFacingRight;
+                Vector3 localScale = transform.localScale;
+                localScale.x *= -1f;
+                transform.localScale = localScale;
+            }
+
+            Invoke(nameof(StopWallJumping), wallJumpingDuration);
+        }
+    }
+
+    private void StopWallJumping()
+    {
+        isWallJumping = false;
+    }
+
+    private void Flip()
+    {
+        if (isFacingRight && horizontal < 0f || !isFacingRight && horizontal > 0f)
+        {
+            isFacingRight = !isFacingRight;
+            Vector3 localScale = transform.localScale;
+            localScale.x *= -1f;
+            transform.localScale = localScale;
         }
     }
 
@@ -169,6 +231,7 @@ public class PlayerManager : MonoBehaviour
             actualPlatform = null;
         }
     }
+
     /*private void Die()
     {
 

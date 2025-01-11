@@ -1,14 +1,16 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using Unity.VisualScripting;
 using UnityEditor.Tilemaps;
 using UnityEngine;
 
 public class EnemiesManager : MonoBehaviour
 {
-    public bool playerDetected;
     [SerializeField]
-    private int speed = 10;
+    private int speed;
+    const int moveSpeed = 3;
     private bool canChangeDirection = true;
     private float verticalPointContact;
     private GameObject player;
@@ -18,56 +20,77 @@ public class EnemiesManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        playerDetected = false;
+        speed = 0;
         player = GameObject.FindGameObjectWithTag("Player");
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (!playerDetected)
+        bool isFalling = Physics2D.Raycast(transform.position, Vector2.down, 1.3f, LayerMask.GetMask("Ground")).collider == null;
+        if (!isFalling)
         {
-            //Detectar al jugador a la izquierda
-            RaycastHit2D detectedLeft = Physics2D.Raycast(transform.position, Vector2.left, 30f, LayerMask.GetMask("Player"));
-            if (detectedLeft.collider !=null)
-            {
-                Debug.Log("player detectado a la izquierda");
-                playerDetected=true;
+            Flip(isLeft);
+        }
+
+        var playerDirection = FindPlayer(5f);
+        var obstacleDirection = FindObstacles();
+
+        switch (playerDirection)
+        {
+            /*case  0:
+                playerDetected = false;
+            break;*/
+            case < 0:
                 isLeft = true;
-                speed = Mathf.Abs(speed) * -1; //Mover a la izquierda
-                Flip();
-            }
-            //Detectar al jugador a la derecha
-            RaycastHit2D detectedRight = Physics2D.Raycast(transform.position, Vector2.right, 30f, LayerMask.GetMask("Player"));
-            if (detectedRight.collider != null)
-            {
-                Debug.Log("player detectado a la derecha");
-                playerDetected = true;
+                speed = moveSpeed * -1; //Mover a la izquierda
+                break;
+            case > 0:
                 isLeft = false;
-                speed = Mathf.Abs(speed) * -1; //Mover a la izquierda
-                Flip();
-            }
+                speed = moveSpeed; //Mover a la derecha;
+                break;
         }
-        else
+
+        if (obstacleDirection != 0 && isLeft ? obstacleDirection == -1 :  obstacleDirection == 1)
         {
-            CheckChangeDirection();
-            transform.Translate(Vector2.right * speed * Time.deltaTime);
+            speed = 0;
         }
-        //Verificaar si está cayendo
-        IsFalling();
+
+        transform.Translate(Vector2.right * speed * Time.deltaTime);
     }
 
-    void IsFalling()
+
+    //Busca al player en izquierda y derecha y devuelve -1 si está a la izquierda, 1 si está a la derecha o 0 si no lo detecta
+    int FindPlayer(float distance)
     {
-        RaycastHit2D detectedBottom = Physics2D.Raycast(transform.position, Vector2.down, 1.3f, LayerMask.GetMask("Ground"));
-        if (detectedBottom.collider == null)
+        RaycastHit2D detectedPlayerLeft = Physics2D.Raycast(transform.position, Vector2.left, distance, LayerMask.GetMask("Player"));
+        RaycastHit2D detectedPlayerRight = Physics2D.Raycast(transform.position, Vector2.right, distance, LayerMask.GetMask("Player"));
+        if (detectedPlayerLeft.collider != null)
         {
-            canChangeDirection = false;
+            return -1;
         }
-        else
+        if (detectedPlayerRight.collider != null)
         {
-            canChangeDirection = true;
+            return 1;
         }
+        return 0;
+    }
+
+    int FindObstacles()
+    {
+        RaycastHit2D detectedWallLeft = Physics2D.Raycast(transform.position, Vector2.left, 1f, LayerMask.GetMask("Wall"));
+        RaycastHit2D detectedWallRight = Physics2D.Raycast(transform.position, Vector2.right, 1f, LayerMask.GetMask("Wall"));
+        RaycastHit2D detectedGroundlLeft = Physics2D.Raycast(transform.position, new Vector2(-1, -1), 3f, LayerMask.GetMask("Ground"));
+        RaycastHit2D detectedGroundRight = Physics2D.Raycast(transform.position, new Vector2(1, -1), 3f, LayerMask.GetMask("Ground"));
+        if (detectedWallLeft.collider != null || detectedGroundlLeft.collider == null)
+        {
+            return -1;
+        }
+        if (detectedWallRight.collider != null || detectedGroundRight.collider == null)
+        {
+            return 1;
+        }
+        return 0;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -95,33 +118,11 @@ public class EnemiesManager : MonoBehaviour
             }
         }
     }
-
-    private void Flip()
+    private void Flip(bool left)
     {
         //voltear al enemigo
-        this.GetComponent<SpriteRenderer>().flipX ^= true;
-    }
+        this.GetComponent<SpriteRenderer>().flipX = left;
 
-    private void CheckChangeDirection()
-    {
-        if(canChangeDirection)
-        {
-            RaycastHit2D detected;
-            if (isLeft)
-            {
-                detected = Physics2D.Raycast(transform.position, Vector2.left, 1f, LayerMask.GetMask("Ground"));
-            }
-            else
-            {
-                detected = Physics2D.Raycast(transform.position, Vector2.right, 1f, LayerMask.GetMask("Ground"));
-            }
-            if (detected)
-            {
-                isLeft = !isLeft;
-                speed *= -1;
-                Flip();
-            }
-        }
     }
 
     private void EnemyDie()
