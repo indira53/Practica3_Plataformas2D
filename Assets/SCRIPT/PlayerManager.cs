@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
@@ -42,14 +43,29 @@ public class PlayerManager : MonoBehaviour
     private float wallJumpingDuration = 0.4f;
     private Vector2 wallJumpingPower = new Vector2(3f, 6f);
 
+    private LifeManager _lifeManager;
+    public GameManager gameManager;
+
     [SerializeField] private Transform wallCheck;
+
+    public PlayerHealthDisplay healthDisplay;
+
+    private Vector2 spawnPosition;
+    bool checkpointReached;
+    public Transform bulletSpawnPosition;
+    public GameObject bulletPrefab;
+    private GameObject currentBullet;
+    public float bulletSpeed;
 
     private void Start()
     {
+        currentBullet = null;
+        checkpointReached = false;
+        spawnPosition = transform.position;
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
-        //livesNumber.text = lives.ToString();
+        _lifeManager = GetComponent<LifeManager>();
     }
 
     // Update is called once per frame
@@ -60,6 +76,7 @@ public class PlayerManager : MonoBehaviour
         CheckVulnerability();
         WallSlide();
         WallJump();
+        ManageShooting();
 
         if (!isWallJumping)
         {
@@ -113,12 +130,12 @@ public class PlayerManager : MonoBehaviour
 
     private bool IsWalled()
     {
-        Debug.Log("walled");
         return Physics2D.OverlapCircle(wallCheck.position, 0.2f, wallLayer);
     }
 
     private void WallSlide()
     {
+        numberJump = 0;
         if (IsWalled() && !IsInFloor() && horizontal != 0f)
         {
             isWallSliding = true;
@@ -197,6 +214,21 @@ public class PlayerManager : MonoBehaviour
             isVulnerable = true;
         }
     }
+    private void ManageShooting()
+    {
+        
+        if (Input.GetMouseButtonDown(0) && currentBullet == null)
+        {
+            Shoot();
+        }
+    }
+    private void Shoot()
+    {
+
+        currentBullet = Instantiate(bulletPrefab, bulletSpawnPosition);
+        currentBullet.GetComponent<Rigidbody2D>().velocity = new Vector2(bulletSpeed * transform.localScale.x, 0);
+        currentBullet.transform.parent = null;
+    }
 
     private bool IsInFloor()
     {
@@ -220,6 +252,39 @@ public class PlayerManager : MonoBehaviour
             actualPlatform = collision.transform;
             transform.parent = actualPlatform; //hacemos que es player sea hijo de la plataforma
         }
+        if (collision.gameObject.CompareTag("Enemy"))
+        {
+            Health -= 1;
+        }
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.CompareTag("CheckPoint"))
+        {
+            spawnPosition = collision.transform.position;
+            checkpointReached = true;
+        }
+        if (collision.gameObject.CompareTag("FallLimit"))
+        {
+            Health -= 1;
+            transform.position = spawnPosition;
+        }
+    }
+
+    public int Health
+    {
+        get => _lifeManager.Health;
+        set
+        {
+            _lifeManager.Health = value;
+            healthDisplay.UpdateDisplay(value);
+            if (value == 0)
+            {
+                Die();
+            }
+
+        }
     }
 
     private void OnCollisionExit2D(Collision2D collision)
@@ -231,11 +296,20 @@ public class PlayerManager : MonoBehaviour
             actualPlatform = null;
         }
     }
-
-    /*private void Die()
+    private void Die()
     {
+        if (checkpointReached)
+        {
+            transform.position = spawnPosition;
+            Health = _lifeManager.StartingHealth;
+        }
+        else
+        {
+            gameManager.DeathScene();
+        }
 
-    }*/
+
+    }
 
 
 

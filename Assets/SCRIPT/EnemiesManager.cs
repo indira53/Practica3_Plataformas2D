@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Unity.VisualScripting;
 using UnityEditor.Tilemaps;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class EnemiesManager : MonoBehaviour
 {
@@ -15,6 +16,10 @@ public class EnemiesManager : MonoBehaviour
     private float verticalPointContact;
     private GameObject player;
     private bool isLeft = true;
+    private Animator animator;
+    private LifeManager lifeManager;
+    public float attackCooldown;
+    private float attackCooldownCounter;
 
 
     // Start is called before the first frame update
@@ -22,6 +27,8 @@ public class EnemiesManager : MonoBehaviour
     {
         speed = 0;
         player = GameObject.FindGameObjectWithTag("Player");
+        animator = GetComponent<Animator>();
+        lifeManager = GetComponent<LifeManager>();
     }
 
     // Update is called once per frame
@@ -44,16 +51,28 @@ public class EnemiesManager : MonoBehaviour
             case < 0:
                 isLeft = true;
                 speed = moveSpeed * -1; //Mover a la izquierda
+                animator.SetBool("isMoving", true);
                 break;
             case > 0:
                 isLeft = false;
                 speed = moveSpeed; //Mover a la derecha;
+                animator.SetBool("isMoving", true);
                 break;
         }
+        if (attackCooldownCounter > attackCooldown && 0 < Mathf.Abs(playerDirection) && Mathf.Abs(playerDirection) < 2)
+        {
+            animator.SetTrigger("Attacks");
+            attackCooldownCounter = 0f;
+        }
+        attackCooldownCounter += Time.deltaTime;
+
+
+
 
         if (obstacleDirection != 0 && isLeft ? obstacleDirection == -1 :  obstacleDirection == 1)
         {
             speed = 0;
+            animator.SetBool("isMoving", false);
         }
 
         transform.Translate(Vector2.right * speed * Time.deltaTime);
@@ -61,17 +80,18 @@ public class EnemiesManager : MonoBehaviour
 
 
     //Busca al player en izquierda y derecha y devuelve -1 si está a la izquierda, 1 si está a la derecha o 0 si no lo detecta
-    int FindPlayer(float distance)
+    float FindPlayer(float distance)
     {
         RaycastHit2D detectedPlayerLeft = Physics2D.Raycast(transform.position, Vector2.left, distance, LayerMask.GetMask("Player"));
         RaycastHit2D detectedPlayerRight = Physics2D.Raycast(transform.position, Vector2.right, distance, LayerMask.GetMask("Player"));
         if (detectedPlayerLeft.collider != null)
         {
-            return -1;
+
+            return detectedPlayerLeft.distance * -1;
         }
         if (detectedPlayerRight.collider != null)
         {
-            return 1;
+            return detectedPlayerRight.distance;
         }
         return 0;
     }
@@ -102,19 +122,27 @@ public class EnemiesManager : MonoBehaviour
             if (verticalPointContact < -0.5f)
             {
                 player.GetComponent<Rigidbody2D>().velocity = Vector2.up * 4;
-                speed = 0;
-                //this.GetComponent<Animator>().SetBool("isDead", true);
-                Invoke("EnemyDie", 0.5f);
+
             } 
             else
             {
                 if (player.GetComponent<PlayerManager>().GetVulnerability())
                 {
-                    //player.GetComponent<Animator>().SetBool("isDead", true);
-                    //player.GetComponent<PlayerManager>().SubstractLives();
                     player.GetComponent<PlayerManager>().SetVulnerability();
-                    Debug.Log("Has Muerto");
                 }
+            }
+        }
+    }
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.tag == "Weapon")
+        {
+            lifeManager.Health -= 1;
+            animator.SetTrigger("Hurt");
+            if (lifeManager.Health == 0)
+            {
+                speed = 0;
+                Invoke("EnemyDie", 0.5f);
             }
         }
     }
