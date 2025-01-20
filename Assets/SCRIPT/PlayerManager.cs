@@ -26,8 +26,6 @@ public class PlayerManager : MonoBehaviour
     private Rigidbody2D rb;
 
     private bool isJumpingButtonPressed = false;
-    //private float xVelocity;
-    //public int lives = 3;
     private bool isVulnerable = true;
     private float vulnerabilityTime = 0f;
 
@@ -42,6 +40,12 @@ public class PlayerManager : MonoBehaviour
     private float wallJumpingCounter;
     private float wallJumpingDuration = 0.4f;
     private Vector2 wallJumpingPower = new Vector2(3f, 6f);
+
+    public float dashForce = 6f;
+    public float dashCooldown = 2f;
+    private float dashCooldownCounter;
+    public int maxDashAir = 1;
+    public int numberDashAir = 0;
 
     private LifeManager _lifeManager;
     public GameManager gameManager;
@@ -71,12 +75,14 @@ public class PlayerManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+
         PlayerMovement();
         PlayerJump();
         CheckVulnerability();
         WallSlide();
         WallJump();
         ManageShooting();
+        PlayerDash();
 
         if (!isWallJumping)
         {
@@ -140,10 +146,12 @@ public class PlayerManager : MonoBehaviour
         {
             isWallSliding = true;
             rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue));
+            animator.SetBool("isWalled", true);
         }
         else
         {
             isWallSliding = false;
+            animator.SetBool("isWalled", false);
         }
     }
 
@@ -196,6 +204,34 @@ public class PlayerManager : MonoBehaviour
         }
     }
 
+    private void Dash()
+    {
+        animator.SetTrigger("Dash");
+        rb.velocity = new Vector2(isFacingRight? dashForce: -dashForce, 0);
+        rb.constraints = (RigidbodyConstraints2D)6;
+        Invoke("UnfreezeY", 0.6f);
+        dashCooldownCounter = 0f;
+
+    }
+
+    private void PlayerDash()
+    {
+        if (Input.GetKeyDown(KeyCode.LeftShift) && !IsInFloor() && numberDashAir<maxDashAir)
+        {
+            Dash();
+        }
+        if (Input.GetKeyDown(KeyCode.LeftShift) && IsInFloor() && dashCooldownCounter > dashCooldown )
+        {
+            Dash();
+            
+        }
+        dashCooldownCounter += Time.deltaTime;
+    }
+
+    public void UnfreezeY()
+    {
+        rb.constraints = (RigidbodyConstraints2D)4;
+    }
     public bool GetVulnerability()
     {
         return isVulnerable;

@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Unity.VisualScripting;
 using UnityEditor.Tilemaps;
 using UnityEngine;
+using static UnityEditor.Searcher.SearcherWindow.Alignment;
 using Random = UnityEngine.Random;
 
 public class EnemiesManager : MonoBehaviour
@@ -20,6 +21,9 @@ public class EnemiesManager : MonoBehaviour
     private LifeManager lifeManager;
     public float attackCooldown;
     private float attackCooldownCounter;
+    private bool isFacingRight = true;
+    private Rigidbody2D rb;
+
 
 
     // Start is called before the first frame update
@@ -29,6 +33,7 @@ public class EnemiesManager : MonoBehaviour
         player = GameObject.FindGameObjectWithTag("Player");
         animator = GetComponent<Animator>();
         lifeManager = GetComponent<LifeManager>();
+        rb = GetComponent<Rigidbody2D>();
     }
 
     // Update is called once per frame
@@ -37,7 +42,7 @@ public class EnemiesManager : MonoBehaviour
         bool isFalling = Physics2D.Raycast(transform.position, Vector2.down, 1.3f, LayerMask.GetMask("Ground")).collider == null;
         if (!isFalling)
         {
-            Flip(isLeft);
+            Flip();
         }
 
         var playerDirection = FindPlayer(5f);
@@ -59,10 +64,12 @@ public class EnemiesManager : MonoBehaviour
                 animator.SetBool("isMoving", true);
                 break;
         }
-        if (attackCooldownCounter > attackCooldown && 0 < Mathf.Abs(playerDirection) && Mathf.Abs(playerDirection) < 2)
+        if (attackCooldownCounter > attackCooldown && 0 < Mathf.Abs(playerDirection) && Mathf.Abs(playerDirection) < 2.5f)
         {
             animator.SetTrigger("Attacks");
             attackCooldownCounter = 0f;
+            rb.constraints = (RigidbodyConstraints2D)5;
+
         }
         attackCooldownCounter += Time.deltaTime;
 
@@ -146,11 +153,17 @@ public class EnemiesManager : MonoBehaviour
             }
         }
     }
-    private void Flip(bool left)
+    private void Flip()
     {
         //voltear al enemigo
-        this.GetComponent<SpriteRenderer>().flipX = left;
 
+        if (isFacingRight && speed < 0f || !isFacingRight && speed > 0f)
+        {
+            isFacingRight = !isFacingRight;
+            Vector3 localScale = transform.localScale;
+            localScale.x *= -1f;
+            transform.localScale = localScale;
+        }
     }
 
     private void EnemyDie()
