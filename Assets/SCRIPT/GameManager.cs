@@ -6,19 +6,6 @@ using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
-    [NonSerialized] public GameObject player;
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
     public void DeathScene()
     {
         SceneManager.LoadScene("DeathScene");
@@ -30,6 +17,8 @@ public class GameManager : MonoBehaviour
 
     public void ExitButton()
     {
+        Debug.Log("quitting");
         Application.Quit();
+        Debug.Log("Not quitting");
     }
 }

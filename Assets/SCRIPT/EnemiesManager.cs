@@ -3,9 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Unity.VisualScripting;
-using UnityEditor.Tilemaps;
 using UnityEngine;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
 using Random = UnityEngine.Random;
 
 public class EnemiesManager : MonoBehaviour

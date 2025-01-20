@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 public class PlayerManager : MonoBehaviour
 {
@@ -141,9 +140,10 @@ public class PlayerManager : MonoBehaviour
 
     private void WallSlide()
     {
-        numberJump = 0;
+        
         if (IsWalled() && !IsInFloor() && horizontal != 0f)
         {
+            numberJump = 0;
             isWallSliding = true;
             rb.velocity = new Vector2(rb.velocity.x, Mathf.Clamp(rb.velocity.y, -wallSlidingSpeed, float.MaxValue));
             animator.SetBool("isWalled", true);
